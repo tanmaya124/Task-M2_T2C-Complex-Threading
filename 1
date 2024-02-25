@@ -1,0 +1,97 @@
+// Sequential QuickSort
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+// Function to perform sequential QuickSort
+void quickSortSequential(std::vector<int>& arr, int low, int high) {
+    if (low < high) {
+        // Select pivot and partition array
+        int pivot = arr[high];
+        int i = low - 1;
+
+        // Iterate through the array to partition
+        for (int j = low; j <= high - 1; j++) {
+            if (arr[j] < pivot) {
+                // Swap elements to maintain order
+                i++;
+                std::swap(arr[i], arr[j]);
+            }
+        }
+
+        // Place pivot in its correct position
+        std::swap(arr[i + 1], arr[high]);
+
+        int partitionIndex = i + 1;
+
+        // Recursively sort sub-arrays
+        quickSortSequential(arr, low, partitionIndex - 1);
+        quickSortSequential(arr, partitionIndex + 1, high);
+    }
+}
+
+// Parallel QuickSort using OpenMP
+#include <omp.h>
+
+// Function to perform parallel QuickSort
+void quickSortParallel(std::vector<int>& arr, int low, int high) {
+    if (low < high) {
+        // Select pivot and partition array
+        int pivot = arr[high];
+        int i = low - 1;
+
+        // Parallelize the loop for partitioning
+        #pragma omp parallel for
+        for (int j = low; j <= high - 1; j++) {
+            if (arr[j] < pivot) {
+                // Use critical section to update index i
+                #pragma omp critical
+                {
+                    i++;
+                    std::swap(arr[i], arr[j]);
+                }
+            }
+        }
+
+        // Place pivot in its correct position
+        std::swap(arr[i + 1], arr[high]);
+
+        int partitionIndex = i + 1;
+
+        // Use tasks for parallel recursive calls
+        #pragma omp task
+        quickSortParallel(arr, low, partitionIndex - 1);
+        #pragma omp task
+        quickSortParallel(arr, partitionIndex + 1, high);
+    }
+}
+
+// Main function
+int main() {
+    // Generate a random vector for testing
+    std::vector<int> data = {4, 2, 7, 1, 9, 5, 3, 8, 6};
+
+    // Sequential QuickSort
+    std::vector<int> sequentialData = data;
+    auto startSequential = std::chrono::high_resolution_clock::now();
+    quickSortSequential(sequentialData, 0, sequentialData.size() - 1);
+    auto stopSequential = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationSequential = stopSequential - startSequential;
+
+    // Parallel QuickSort
+    std::vector<int> parallelData = data;
+    auto startParallel = std::chrono::high_resolution_clock::now();
+    #pragma omp parallel
+    {
+        #pragma omp single
+        quickSortParallel(parallelData, 0, parallelData.size() - 1);
+    }
+    auto stopParallel = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationParallel = stopParallel - startParallel;
+
+    // Output execution times
+    std::cout << "Sequential Execution Time: " << durationSequential.count() << " seconds\n";
+    std::cout << "Parallel Execution Time: " << durationParallel.count() << " seconds\n";
+
+    return 0;
+}
